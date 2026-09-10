@@ -1,0 +1,1 @@
+# Arabic-AI-Text-Detection-MSIS-822Project
