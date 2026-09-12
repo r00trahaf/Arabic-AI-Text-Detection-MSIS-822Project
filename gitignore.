@@ -1,0 +1,7 @@
+# Python & Jupyter cache
+__pycache__/
+.ipynb_checkpoints/
+
+# Large dataset directories
+data/raw/*
+data/processed/*
