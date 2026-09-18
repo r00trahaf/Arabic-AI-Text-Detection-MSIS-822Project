@@ -1,1 +1,113 @@
+# Phase 1: Project Setup and Initial Data Exploration
 
+## 1. Project Overview
+
+This project focuses on the detection of AI-generated Arabic text using data mining and machine learning techniques. The dataset used in this project is the **KFUPM-JRCAI Arabic Generated Abstracts** dataset available through Hugging Face. The dataset contains Arabic academic abstracts generated using different approaches and large language models. The objective of the project is to develop classification models that can distinguish between human-written and AI-generated Arabic text.
+
+The dataset is organized into three generation methods: `by_polishing`, `from_title`, and `from_title_and_content`. The original dataset contains 2,851 records for `by_polishing`, 2,963 records for `from_title`, and 2,574 records for `from_title_and_content`, for a total of 8,388 original abstracts. Each record contains one original human-written abstract and four AI-generated versions produced using different language models.
+
+## 2. Data Acquisition
+
+The dataset was downloaded directly from Hugging Face using the Python `datasets` library. The dataset was loaded into the Google Colab environment and converted into pandas DataFrames for further exploration and analysis.
+
+The three dataset subsets were saved as separate raw CSV files:
+
+* `by_polishing.csv`
+* `from_title.csv`
+* `from_title_and_content.csv`
+
+The raw data was preserved without modification to maintain a reproducible version of the original dataset.
+
+## 3. Dataset Structure
+
+Each original dataset subset contains five columns:
+
+* `original_abstract`
+* `allam_generated_abstract`
+* `jais_generated_abstract`
+* `llama_generated_abstract`
+* `openai_generated_abstract`
+
+For the classification task, the data was reshaped into a long format. The `original_abstract` column was assigned the label **Human**, while the four generated abstract columns were assigned the label **AI**.
+
+An additional `generation_method` column was retained to identify how each abstract was generated. This variable is intended for analysis and dataset investigation and will not be used as a predictive feature for classification.
+
+After combining the three subsets, the resulting dataset contained **41,940 text records**:
+
+| Label     | Number of Records | Percentage |
+| --------- | ----------------: | ---------: |
+| Human     |             8,388 |        20% |
+| AI        |            33,552 |        80% |
+| **Total** |        **41,940** |   **100%** |
+
+The resulting class distribution is therefore imbalanced, with AI-generated texts representing approximately four-fifths of the observations.
+
+## 4. Missing Values and Data Types
+
+An initial data-quality inspection was performed to identify missing values, empty texts, and inappropriate data types.
+
+The dataset contains the following data types:
+
+| Column              | Data Type |
+| ------------------- | --------- |
+| `text`              | object    |
+| `label`             | object    |
+| `generation_method` | object    |
+
+No missing labels were identified. In addition, there were no empty or whitespace-only text records, and all values in the `text` column were valid string values.
+
+The final label values were confirmed to be:
+
+* `Human`
+* `AI`
+
+No missing labels were found.
+
+Overall, the initial inspection indicates that the dataset does not contain missing or invalid text values requiring removal at this stage.
+
+## 5. Duplicate Analysis
+
+Duplicate analysis was performed as part of the initial data exploration. No duplicate rows were found within each of the three original raw dataset subsets.
+
+However, after converting the dataset into the classification format and combining the three subsets, repeated text values were identified. A total of **5,415 repeated text occurrences** were detected using the text-level duplicate check, with **2,958 unique text values** involved in duplication.
+
+Further investigation showed that many of these repetitions are associated with the structure of the original dataset, particularly the presence of the same human-written abstract across different generation methods. Therefore, these repeated texts cannot automatically be considered erroneous duplicates.
+
+A smaller set of **16 unique texts** was found to appear with both `Human` and `AI` labels. These cases were identified as label inconsistencies during the exploratory analysis. They will be documented and investigated during the preprocessing stage rather than modifying the raw dataset during Phase 1.
+
+The raw data remains unchanged at this stage in order to preserve the original dataset and maintain reproducibility.
+
+## 6. Text Length Analysis
+
+Text length was examined to identify extremely short or potentially invalid text records.
+
+The descriptive statistics for text length were:
+
+| Statistic          |  Value |
+| ------------------ | -----: |
+| Number of texts    | 41,940 |
+| Mean               | 671.74 |
+| Standard deviation | 257.18 |
+| Minimum            |    170 |
+| 25th percentile    |    504 |
+| Median             |    647 |
+| 75th percentile    |    802 |
+| Maximum            | 18,459 |
+
+No texts shorter than 10 characters were found. The minimum observed text length was 170 characters, indicating that there were no extremely short text records in the dataset.
+
+The maximum text length of 18,459 characters indicates that some texts are substantially longer than the typical observation. This characteristic will be considered during later exploratory analysis and preprocessing, but no records were removed based on length during Phase 1.
+
+## 7. Initial Findings
+
+The initial exploration produced several important observations:
+
+1. The dataset contains **41,940 text records** after transforming the original abstracts into Human and AI classification instances.
+2. The classification task contains two target classes: **Human** and **AI**.
+3. The class distribution is imbalanced, with **33,552 AI-generated texts (80%)** and **8,388 human-written texts (20%)**.
+4. No missing values, empty texts, or non-string text values were identified.
+5. No duplicate rows were found within the original raw subsets.
+6. Repeated text values appeared after combining the subsets, largely because human abstracts occur across multiple generation methods.
+7. **16 unique texts** were identified with both Human and AI labels, representing potential label inconsistencies that require further investigation.
+8. Text lengths range from 170 to 18,459 characters, with a median length of 647 characters.
+9. The raw dataset has been preserved without modification at this stage.
