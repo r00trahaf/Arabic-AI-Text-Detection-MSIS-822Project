@@ -1,557 +1,395 @@
-```python
-"""
-MSIS-822 Advanced Data Analytic Techniques
+# ============================================================
+# MSIS-822 Final Project
+# Detection of AI-Generated Arabic Text
+#
+# Phase 1: Project Setup & Data Acquisition
+#
+# Dataset:
+# KFUPM-JRCAI/arabic-generated-abstracts
+#
+# Selected subset:
+# from_title_and_content
+# ============================================================
 
-Project:
-Detection of AI-Generated Arabic Text: A Data Mining Approach
-
-Phase 1:
-Project Setup & Data Acquisition
-Initial Data Exploration
-
-This script:
-1. Downloads the dataset from Hugging Face.
-2. Saves the original data as raw CSV files.
-3. Loads the raw CSV files.
-4. Reshapes the data into Human vs AI classification format.
-5. Combines all dataset subsets.
-6. Performs initial data-quality checks:
-   - Dataset structure
-   - Label distribution
-   - Missing values
-   - Duplicate texts
-   - Label inconsistencies
-   - Data types
-   - Non-string values
-   - Text length
-   - Very short texts
-"""
 
 # ============================================================
-# 1. IMPORT LIBRARIES
+# 1. Imports
 # ============================================================
 
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 from datasets import load_dataset
 
 
 # ============================================================
-# 2. CONFIGURATION
+# 2. Configuration
 # ============================================================
 
 DATASET_NAME = "KFUPM-JRCAI/arabic-generated-abstracts"
+SELECTED_SPLIT = "from_title_and_content"
 
-RAW_DATA_PATH = Path("/content/data/raw")
+BASE_PATH = Path("/content")
+
+RAW_DATA_PATH = BASE_PATH / "data" / "raw"
+PROCESSED_DATA_PATH = BASE_PATH / "data" / "processed"
+
+RAW_DATA_PATH.mkdir(parents=True, exist_ok=True)
+PROCESSED_DATA_PATH.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================
-# 3. DOWNLOAD DATASET FROM HUGGING FACE
+# 3. Load Dataset from Hugging Face
 # ============================================================
+
+print("=" * 70)
+print("Loading dataset from Hugging Face")
+print("=" * 70)
 
 dataset = load_dataset(DATASET_NAME)
 
-print("Dataset loaded successfully:")
 print(dataset)
 
 
 # ============================================================
-# 4. INITIAL DATASET STRUCTURE
+# 4. Inspect Dataset Structure
 # ============================================================
 
-print("\nDataset splits:")
+print("\n" + "=" * 70)
+print("Dataset Structure")
+print("=" * 70)
+
+print(f"Available subsets: {list(dataset.keys())}")
+
 for split_name in dataset.keys():
-    print(
-        f"{split_name}: "
-        f"{len(dataset[split_name])} rows"
+    print(f"\nSubset: {split_name}")
+    print(f"Number of rows: {len(dataset[split_name])}")
+    print(f"Features: {dataset[split_name].features}")
+
+
+# ============================================================
+# 5. Select the Required Subset
+# ============================================================
+
+print("\n" + "=" * 70)
+print(f"Selected subset: {SELECTED_SPLIT}")
+print("=" * 70)
+
+selected_dataset = dataset[SELECTED_SPLIT]
+
+print(f"Number of raw samples: {len(selected_dataset)}")
+print(f"Features: {selected_dataset.features}")
+
+
+# ============================================================
+# 6. Convert Selected Subset to Pandas DataFrame
+# ============================================================
+
+df_raw = selected_dataset.to_pandas()
+
+print("\nRaw DataFrame shape:")
+print(df_raw.shape)
+
+print("\nColumns:")
+print(df_raw.columns.tolist())
+
+print("\nData types:")
+print(df_raw.dtypes)
+
+
+# ============================================================
+# 7. Save Original Raw Data
+# ============================================================
+
+raw_file = RAW_DATA_PATH / f"{SELECTED_SPLIT}.csv"
+
+df_raw.to_csv(
+    raw_file,
+    index=False,
+    encoding="utf-8-sig"
+)
+
+print(f"\nRaw data saved to:")
+print(raw_file)
+
+
+# ============================================================
+# 8. Data Quality Checks BEFORE Reshaping
+# ============================================================
+
+print("\n" + "=" * 70)
+print("RAW DATA QUALITY CHECKS")
+print("All checks are performed before reshaping.")
+print("=" * 70)
+
+
+# ------------------------------------------------------------
+# 8.1 Missing Values
+# ------------------------------------------------------------
+
+print("\n--- Missing Values ---")
+
+missing_values = df_raw.isnull().sum()
+
+print(missing_values)
+
+print(
+    f"\nTotal missing values: "
+    f"{missing_values.sum()}"
+)
+
+
+# ------------------------------------------------------------
+# 8.2 Duplicate Rows
+# ------------------------------------------------------------
+
+print("\n--- Duplicate Rows ---")
+
+duplicate_rows = df_raw.duplicated().sum()
+
+print(f"Duplicate rows: {duplicate_rows}")
+
+
+# ------------------------------------------------------------
+# 8.3 Empty Strings
+# ------------------------------------------------------------
+
+print("\n--- Empty Text Values ---")
+
+text_columns = [
+    "original_abstract",
+    "allam_generated_abstract",
+    "jais_generated_abstract",
+    "llama_generated_abstract",
+    "openai_generated_abstract"
+]
+
+empty_values = {}
+
+for column in text_columns:
+    empty_count = (
+        df_raw[column]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+        .eq("")
+        .sum()
     )
 
-print("\nDataset features:")
-for split_name in dataset.keys():
-    print(f"\n{split_name}:")
-    print(dataset[split_name].features)
+    empty_values[column] = empty_count
+
+    print(f"{column}: {empty_count}")
+
+
+# ------------------------------------------------------------
+# 8.4 Data Types
+# ------------------------------------------------------------
+
+print("\n--- Data Types ---")
+
+print(df_raw.dtypes)
+
+non_string_values = {}
+
+for column in text_columns:
+    count = (~df_raw[column].map(lambda x: isinstance(x, str))).sum()
+    non_string_values[column] = count
+
+print("\nNon-string values:")
+for column, count in non_string_values.items():
+    print(f"{column}: {count}")
+
+
+# ------------------------------------------------------------
+# 8.5 Basic Text Length Check
+# ------------------------------------------------------------
+
+print("\n--- Text Length Check ---")
+
+for column in text_columns:
+
+    lengths = df_raw[column].fillna("").astype(str).str.len()
+
+    print(f"\n{column}")
+    print(f"Minimum length: {lengths.min()}")
+    print(f"Maximum length: {lengths.max()}")
+    print(f"Empty texts: {(lengths == 0).sum()}")
 
 
 # ============================================================
-# 5. SAVE RAW DATA
+# 9. Data Quality Summary
 # ============================================================
 
-RAW_DATA_PATH.mkdir(
-    parents=True,
-    exist_ok=True
-)
+print("\n" + "=" * 70)
+print("RAW DATA QUALITY SUMMARY")
+print("=" * 70)
 
-dataset["by_polishing"].to_pandas().to_csv(
-    RAW_DATA_PATH / "by_polishing.csv",
-    index=False
-)
+print(f"Raw rows: {len(df_raw)}")
+print(f"Raw columns: {len(df_raw.columns)}")
+print(f"Missing values: {missing_values.sum()}")
+print(f"Duplicate rows: {duplicate_rows}")
 
-dataset["from_title"].to_pandas().to_csv(
-    RAW_DATA_PATH / "from_title.csv",
-    index=False
-)
+total_empty_values = sum(empty_values.values())
 
-dataset["from_title_and_content"].to_pandas().to_csv(
-    RAW_DATA_PATH / "from_title_and_content.csv",
-    index=False
-)
-
-print("\nRaw data saved successfully.")
-
-print("\nRaw files:")
-print([file.name for file in RAW_DATA_PATH.iterdir()])
+print(f"Empty text values: {total_empty_values}")
 
 
 # ============================================================
-# 6. LOAD RAW CSV FILES
+# 10. Reshape the Dataset
 # ============================================================
 
-df_by_polishing = pd.read_csv(
-    RAW_DATA_PATH / "by_polishing.csv"
-)
-
-df_from_title = pd.read_csv(
-    RAW_DATA_PATH / "from_title.csv"
-)
-
-df_from_title_and_content = pd.read_csv(
-    RAW_DATA_PATH / "from_title_and_content.csv"
-)
+print("\n" + "=" * 70)
+print("RESHAPING DATASET")
+print("=" * 70)
 
 
-# ============================================================
-# 7. CHECK SHAPES OF RAW DATA
-# ============================================================
-
-print("\nRaw dataset shapes:")
-
-print(
-    "by_polishing:",
-    df_by_polishing.shape
-)
-
-print(
-    "from_title:",
-    df_from_title.shape
-)
-
-print(
-    "from_title_and_content:",
-    df_from_title_and_content.shape
-)
+# Human-written abstracts
+human_df = pd.DataFrame({
+    "text": df_raw["original_abstract"],
+    "label": "Human"
+})
 
 
-# ============================================================
-# 8. INITIAL MISSING VALUES AND DUPLICATES CHECK
-# ============================================================
+# AI-generated abstracts
+ai_columns = [
+    "allam_generated_abstract",
+    "jais_generated_abstract",
+    "llama_generated_abstract",
+    "openai_generated_abstract"
+]
 
-print("\nMissing values in raw datasets:")
+ai_parts = []
 
-print("\nby_polishing:")
-print(df_by_polishing.isna().sum())
+for column in ai_columns:
 
-print("\nfrom_title:")
-print(df_from_title.isna().sum())
-
-print("\nfrom_title_and_content:")
-print(df_from_title_and_content.isna().sum())
-
-
-print("\nDuplicate rows in raw datasets:")
-
-print(
-    "by_polishing:",
-    df_by_polishing.duplicated().sum()
-)
-
-print(
-    "from_title:",
-    df_from_title.duplicated().sum()
-)
-
-print(
-    "from_title_and_content:",
-    df_from_title_and_content.duplicated().sum()
-)
-
-
-# ============================================================
-# 9. PREPARE HUMAN AND AI DATA
-# ============================================================
-
-def prepare_split(df, method_name):
-    """
-    Convert one dataset split into Human vs AI format.
-
-    The original abstract is labeled Human.
-    The four generated abstracts are labeled AI.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Original dataset split.
-    method_name : str
-        Generation method name.
-
-    Returns
-    -------
-    pandas.DataFrame
-        DataFrame containing:
-        text, label, generation_method
-    """
-
-    # Human-written abstracts
-    human = pd.DataFrame({
-        "text": df["original_abstract"],
-        "label": "Human",
-        "generation_method": method_name
+    temp = pd.DataFrame({
+        "text": df_raw[column],
+        "label": "AI"
     })
 
-    # AI-generated abstracts
-    ai_columns = [
-        "allam_generated_abstract",
-        "jais_generated_abstract",
-        "llama_generated_abstract",
-        "openai_generated_abstract"
-    ]
-
-    ai_parts = []
-
-    for column in ai_columns:
-
-        temp = pd.DataFrame({
-            "text": df[column],
-            "label": "AI",
-            "generation_method": method_name
-        })
-
-        ai_parts.append(temp)
-
-    ai = pd.concat(
-        ai_parts,
-        ignore_index=True
-    )
-
-    return pd.concat(
-        [human, ai],
-        ignore_index=True
-    )
+    ai_parts.append(temp)
 
 
-# ============================================================
-# 10. PREPARE EACH DATASET SPLIT
-# ============================================================
-
-df1 = prepare_split(
-    df_by_polishing,
-    "by_polishing"
-)
-
-df2 = prepare_split(
-    df_from_title,
-    "from_title"
-)
-
-df3 = prepare_split(
-    df_from_title_and_content,
-    "from_title_and_content"
-)
-
-
-print("\nPrepared split shapes:")
-
-print(
-    "by_polishing:",
-    df1.shape
-)
-
-print(
-    "from_title:",
-    df2.shape
-)
-
-print(
-    "from_title_and_content:",
-    df3.shape
-)
-
-
-# ============================================================
-# 11. COMBINE ALL DATASET SPLITS
-# ============================================================
-
-df = pd.concat(
-    [df1, df2, df3],
+ai_df = pd.concat(
+    ai_parts,
     ignore_index=True
 )
 
-print("\nCombined dataset shape:")
-print(df.shape)
+
+# Combine Human and AI
+df_final = pd.concat(
+    [human_df, ai_df],
+    ignore_index=True
+)
 
 
 # ============================================================
-# 12. LABEL DISTRIBUTION
+# 11. Inspect Final Classification Dataset
 # ============================================================
 
-print("\nLabel distribution:")
-print(df["label"].value_counts())
+print("\n" + "=" * 70)
+print("FINAL CLASSIFICATION DATASET")
+print("=" * 70)
 
-print("\nLabel distribution (%):")
-print(
-    df["label"]
+print(f"Final shape: {df_final.shape}")
+
+print("\nColumns:")
+print(df_final.columns.tolist())
+
+print("\nFirst five rows:")
+print(df_final.head())
+
+
+# ============================================================
+# 12. Target Label Distribution
+# ============================================================
+
+print("\n" + "=" * 70)
+print("LABEL DISTRIBUTION")
+print("=" * 70)
+
+label_counts = df_final["label"].value_counts()
+
+label_percentages = (
+    df_final["label"]
     .value_counts(normalize=True)
     .mul(100)
     .round(2)
 )
 
+print("\nCounts:")
+print(label_counts)
 
-# ============================================================
-# 13. GENERATION METHOD DISTRIBUTION
-# ============================================================
-
-print("\nGeneration method distribution:")
-print(
-    df["generation_method"].value_counts()
-)
+print("\nPercentages:")
+print(label_percentages)
 
 
 # ============================================================
-# 14. MISSING AND EMPTY TEXT CHECK
+# 13. Final Dataset Checks
 # ============================================================
 
-empty_texts = (
-    df["text"].isna()
-    | (df["text"].str.strip() == "")
-)
+print("\n" + "=" * 70)
+print("FINAL DATASET CHECKS")
+print("=" * 70)
 
 print(
-    "\nEmpty or whitespace-only texts:",
-    empty_texts.sum()
-)
-
-
-print(
-    "\nMissing labels:",
-    df["label"].isna().sum()
-)
-
-
-# ============================================================
-# 15. DATA TYPES
-# ============================================================
-
-print("\nData types:")
-print(df.dtypes)
-
-
-# ============================================================
-# 16. NON-STRING TEXT VALUES
-# ============================================================
-
-non_string_texts = df["text"].apply(
-    lambda x: not isinstance(x, str)
+    f"Missing text values: "
+    f"{df_final['text'].isnull().sum()}"
 )
 
 print(
-    "\nNon-string text values:",
-    non_string_texts.sum()
+    f"Missing labels: "
+    f"{df_final['label'].isnull().sum()}"
+)
+
+print(
+    f"Non-string text values: "
+    f"{(~df_final['text'].map(lambda x: isinstance(x, str))).sum()}"
+)
+
+print(
+    f"Texts shorter than 10 characters: "
+    f"{(df_final['text'].str.len() < 10).sum()}"
 )
 
 
 # ============================================================
-# 17. DUPLICATE TEXT ANALYSIS
+# 14. Text Length Statistics
 # ============================================================
 
-duplicate_texts = df[
-    df["text"].duplicated(keep=False)
-].copy()
+print("\n" + "=" * 70)
+print("TEXT LENGTH STATISTICS")
+print("=" * 70)
 
-print(
-    "\nRows involved in duplicated texts:",
-    len(duplicate_texts)
-)
+text_lengths = df_final["text"].str.len()
 
-print(
-    "Unique duplicated texts:",
-    duplicate_texts["text"].nunique()
-)
-
-print(
-    "\nDuplicated rows by label:"
-)
-
-print(
-    duplicate_texts["label"].value_counts()
-)
-
-print(
-    "\nDuplicated rows by generation method:"
-)
-
-print(
-    duplicate_texts["generation_method"].value_counts()
-)
+print(text_lengths.describe())
 
 
 # ============================================================
-# 18. TEXT DUPLICATION COUNTS
+# 15. Save Final Classification Dataset
 # ============================================================
 
-print(
-    "\nTotal repeated text occurrences:",
-    df["text"].duplicated().sum()
+processed_file = (
+    PROCESSED_DATA_PATH /
+    "from_title_and_content_classification.csv"
 )
 
-print(
-    "Duplicate rows based on text + label:",
-    df.duplicated(
-        subset=["text", "label"]
-    ).sum()
+df_final.to_csv(
+    processed_file,
+    index=False,
+    encoding="utf-8-sig"
 )
 
+print("\n" + "=" * 70)
+print("DATA PREPARATION COMPLETED")
+print("=" * 70)
 
-# ============================================================
-# 19. IDENTIFY TEXTS WITH BOTH HUMAN AND AI LABELS
-# ============================================================
+print(f"Raw dataset:")
+print(raw_file)
 
-conflicting_texts = (
-    df.groupby("text")
-    .filter(
-        lambda x: x["label"].nunique() > 1
-    )
-)
+print(f"\nFinal classification dataset:")
+print(processed_file)
 
-conflict_summary = (
-    conflicting_texts
-    .groupby(["text", "label"])
-    .size()
-    .unstack(fill_value=0)
-)
-
-print(
-    "\nUnique texts with both Human and AI labels:",
-    len(conflict_summary)
-)
-
-print("\nConflicting label summary:")
-print(conflict_summary)
-
-
-# ============================================================
-# 20. DETAILS OF CONFLICTING TEXTS
-# ============================================================
-
-conflict_details = (
-    df[
-        df["text"].isin(conflict_summary.index)
-    ]
-    .sort_values(
-        ["text", "label", "generation_method"]
-    )
-)
-
-print("\nConflicting text details:")
-print(
-    conflict_details[
-        ["text", "label", "generation_method"]
-    ]
-)
-
-
-# ============================================================
-# 21. TEXT LENGTH ANALYSIS
-# ============================================================
-
-df["text_length"] = df["text"].str.len()
-
-print("\nText length statistics:")
-print(
-    df["text_length"].describe()
-)
-
-
-# ============================================================
-# 22. VERY SHORT TEXT CHECK
-# ============================================================
-
-short_texts = df[
-    df["text_length"] < 10
-]
-
-print(
-    "\nTexts shorter than 10 characters:",
-    len(short_texts)
-)
-
-
-# ============================================================
-# 23. UNIQUE LABEL VALUES
-# ============================================================
-
-print("\nUnique labels:")
-print(
-    df["label"].unique()
-)
-
-
-print(
-    "\nMissing labels:"
-)
-
-print(
-    df["label"].isna().sum()
-)
-
-
-# ============================================================
-# 24. FINAL DATASET SUMMARY
-# ============================================================
-
-print("\n" + "=" * 60)
-print("FINAL PHASE 1 DATASET SUMMARY")
-print("=" * 60)
-
-print(
-    f"Total records: {len(df):,}"
-)
-
-print(
-    f"Human records: {(df['label'] == 'Human').sum():,}"
-)
-
-print(
-    f"AI records: {(df['label'] == 'AI').sum():,}"
-)
-
-print(
-    f"Unique texts: {df['text'].nunique():,}"
-)
-
-print(
-    f"Missing values: {df.isna().sum().sum():,}"
-)
-
-print(
-    f"Empty/whitespace texts: {empty_texts.sum():,}"
-)
-
-print(
-    f"Non-string texts: {non_string_texts.sum():,}"
-)
-
-print(
-    f"Texts shorter than 10 characters: {len(short_texts):,}"
-)
-
-print(
-    f"Unique texts with conflicting labels: "
-    f"{len(conflict_summary):,}"
-)
-
-print("=" * 60)
-```
+print(f"\nFinal number of rows: {len(df_final)}")
+print(f"Final number of columns: {len(df_final.columns)}")
